@@ -1,6 +1,6 @@
-#!/bin/bash
+# #!/bin/bash
 
-service apache2 start
+# service apache2 start
 
-#keep the container running
-tail -f /dev/null
+# #keep the container running
+# tail -f /dev/null
