@@ -1,4 +1,3 @@
-version: '3.9'
 
 services:
   opensis-db:
@@ -12,8 +11,8 @@ services:
       MYSQL_PASSWORD: "Op3nS!S"
     volumes:
       - db_data:/var/lib/mysql  # Persist database data
-      - ./MYSQL/mysql-init:/docker-entrypoint-initdb.d  # Init scripts
-      - ./MYSQL/mysql-config:/etc/mysql/conf.d/strict_mode.cnf  # Custom MySQL config
+      - $PWD/openSIS-Classic/MYSQL/mysql-init:/docker-entrypoint-initdb.d  # Init scripts
+      - $PWD/openSIS-Classic/MYSQL/mysql-config/strict_mode.cnf:/etc/mysql/conf.d/strict_mode.cnf  # Custom MySQL config
     networks:
       opensis-nw:
         aliases:
@@ -35,8 +34,8 @@ services:
     image: prom/prometheus
     container_name: prometheus
     volumes:
-       - "./prometheus.yml:/etc/prometheus/prometheus.yml"
-       - "./rules.yml:/etc/prometheus/rules.yml"
+       - $PWD/prometheus.yml:/etc/prometheus/prometheus.yml
+       - $PWD/rule.yml:/etc/prometheus/rule.yml
     networks:
       opensis-nw:
         aliases:
@@ -58,11 +57,60 @@ services:
     image: prom/alertmanager
     container_name: alert-manager
     volumes:
-      - "./alertmanager.yml:/alertmanager/alertmanager.yml"
+      - $PWD/alertmanager.yml:/alertmanager/alertmanager.yml
     networks:
       - opensis-nw
     ports:
       - 9093:9093
+
+  grafana_postgres:
+    container_name: grafana_postgres
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: grafana_db
+      POSTGRES_USER: grafana_usr
+      POSTGRES_PASSWORD: admin  # Use .env file for security
+    volumes:
+      - postgres-storage:/var/lib/postgresql/data
+    networks:
+      opensis-nw:
+        aliases:
+          - grafana_postgres
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: grafana_postgres
+      GF_DATABASE_NAME: grafana_db
+      GF_DATABASE_USER: grafana_usr
+      GF_DATABASE_PASSWORD: admin  # Use .env file for security
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      opensis-nw:
+        aliases:
+          - grafana
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: always
+    ports:
+      - "8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - opensis-nw
+
 
 networks:
   opensis-nw:
@@ -70,5 +118,5 @@ networks:
 
 volumes:
   db_data:  # Named volume for MariaDB persistence
-
-
+  grafana-storage: {}
+  postgres-storage: {}
